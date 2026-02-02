@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soft & Smart Number Converter v9 (US Standard)</title>
+    <style>
+        :root {
+            --bg-color: #202124;
+            --input-bg: #2d2e32;
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            
+            /* --- PASTEL PALETTE --- */
+            --col-one: #c4b5fd;     /* Soft Indigo (1-9) */
+            --col-teen: #fca5a5;    /* Very Light Red (10-19) */
+            --col-ten: #bfdbfe;     /* Very Light Blue (20, 30, 40...) */
+            --col-unit: #fdba74;    /* Soft Orange (Hundred, Million) */
+            
+            --col-sep: #6b7280;     /* Neutral Gray */
+            --col-neg: #f87171;     /* Alert Red */
+            
+            --col-money: #86efac;   /* Green (Money) */
+            --col-letter: #fcd34d;  /* Amber (Letters) */
+            
+            /* UI Colors */
+            --col-active-purple: #8b5cf6;
+            --col-active-text: #ffffff;
+            --toggle-bg: #18181b;
+            --toggle-text-inactive: #71717a;
+            --toggle-border: #3f3f46;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .main-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- INPUT ZONE --- */
+        .input-zone {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 60px;
+        }
+
+        .controls-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+
+        /* Toggle Styles */
+        .segmented-control {
+            display: inline-flex;
+            background: var(--toggle-bg);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--toggle-border);
+        }
+
+        .segmented-control input { display: none; }
+
+        .segmented-control label {
+            padding: 6px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--toggle-text-inactive);
+            border-radius: 8px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            user-select: none;
+        }
+
+        .segmented-control label:hover { color: #d4d4d8; }
+
+        .segmented-control input:checked + label {
+            background-color: var(--col-active-purple);
+            color: var(--col-active-text);
+        }
+
+        /* --- INPUT WRAPPER --- */
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            background: var(--input-bg);
+            border: 2px solid #3f3f46;
+            border-radius: 12px;
+            color: #e5e7eb;
+            font-size: 2rem;
+            padding: 15px 50px 15px 20px; /* Right padding for X btn */
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            outline: none;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--col-active-purple);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        #clearBtn {
+            position: absolute;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--col-sep);
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 40px;
+        }
+
+        #clearBtn:hover { color: var(--col-neg); }
+        #clearBtn.visible { opacity: 1; pointer-events: auto; }
+
+        /* --- RESULT ZONE --- */
+        #result {
+            width: 95%;
+            max-width: 1600px;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.3;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.2em;
+            text-align: center;
+        }
+
+        @media (max-width: 1200px) { #result { font-size: 2.5rem; } }
+        @media (max-width: 600px) { 
+            #result { font-size: 2rem; } 
+            .input-zone { max-width: 100%; }
+        }
+
+        .word { display: inline-block; }
+
+        /* --- SEMANTIC CLASSES --- */
+        .type-one { color: var(--col-one); }
+        .type-teen { color: var(--col-teen); }
+        .type-ten { color: var(--col-ten); }
+        .type-unit { color: var(--col-unit); }
+        .type-separator { color: var(--col-sep); font-weight: 400; }
+        .type-negative { color: var(--col-neg); }
+        .type-currency { color: var(--col-money); }
+        .type-letter { color: var(--col-letter); text-transform: uppercase; }
+
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <div class="input-zone">
+            <div class="controls-wrapper">
+                <div class="segmented-control">
+                    <input type="radio" name="mode" id="modeStandard" value="standard" checked>
+                    <label for="modeStandard">123</label>
+
+                    <input type="radio" name="mode" id="modeMoney" value="money">
+                    <label for="modeMoney">$</label>
+
+                    <input type="radio" name="mode" id="modeSpell" value="spell">
+                    <label for="modeSpell">ABC</label>
+                </div>
+            </div>
+            
+            <div class="input-wrapper">
+                <input type="text" id="numInput" placeholder="Type..." autocomplete="off">
+                <button id="clearBtn" title="Clear text">&times;</button>
+            </div>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const input = document.getElementById('numInput');
+        const result = document.getElementById('result');
+        const clearBtn = document.getElementById('clearBtn');
+        const modes = document.querySelectorAll('input[name="mode"]');
+
+        const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+        const TEENS = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+        const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+        const THOUSANDS = ['', 'thousand', 'million', 'billion', 'trillion', 'quadrillion', 'quintillion'];
+
+        function mkWord(text, type) { return { text, type }; }
+
+        modes.forEach(mode => {
+            mode.addEventListener('change', () => {
+                if (mode.value !== 'spell') {
+                    input.value = input.value.replace(/[^0-9.-]/g, '');
+                }
+                updateDisplay();
+            });
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            input.focus();
+            updateDisplay();
+        });
+
+        // --- CORE LOGIC (US Standard: No 'and' in integers) ---
+        function processThreeDigits(numString) {
+            let num = parseInt(numString, 10);
+            if (num === 0) return [];
+            let chunkWords = [];
+            
+            // Hundreds
+            if (num >= 100) {
+                chunkWords.push(mkWord(ONES[Math.floor(num / 100)], 'type-one'));
+                chunkWords.push(mkWord('hundred', 'type-unit'));
+                // US Fix: removed the "and" check here. 
+                // 345 becomes "three hundred forty-five".
+                num %= 100;
+            }
+            
+            // Tens & Ones
+            if (num >= 20) {
+                let tenText = TENS[Math.floor(num / 10)];
+                let oneText = ONES[num % 10];
+                chunkWords.push(mkWord(tenText, 'type-ten'));
+                if (oneText) {
+                    chunkWords.push(mkWord('-', 'type-separator'));
+                    chunkWords.push(mkWord(oneText, 'type-one'));
+                }
+            } else if (num >= 10) {
+                chunkWords.push(mkWord(TEENS[num - 10], 'type-teen'));
+            } else if (num > 0) {
+                chunkWords.push(mkWord(ONES[num], 'type-one'));
+            }
+            return chunkWords;
+        }
+
+        function convertInteger(intString) {
+            intString = intString.replace(/^0+/, '');
+            if (intString === '') return [mkWord('zero', 'type-one')];
+
+            let words = [];
+            let chunkCount = 0;
+
+            while (intString.length > 0) {
+                let chunkLen = Math.min(3, intString.length);
+                let chunkStr = intString.slice(-chunkLen);
+                intString = intString.slice(0, -chunkLen);
+
+                let chunkResult = processThreeDigits(chunkStr);
+                if (chunkResult.length > 0) {
+                    if (chunkCount > 0) {
+                        let unitName = THOUSANDS[chunkCount] || 'lots'; 
+                        chunkResult.push(mkWord(unitName, 'type-unit'));
+                    }
+                    words = chunkResult.concat(words);
+                }
+                chunkCount++;
+            }
+            return words;
+        }
+
+        function convertMoney(intPart, decPart) {
+            let output = [];
+            
+            let dollars = convertInteger(intPart);
+            output = output.concat(dollars);
+            output.push(mkWord((intPart === '1' && !decPart) ? 'dollar' : 'dollars', 'type-currency'));
+
+            if (decPart && decPart.length > 0) {
+                // US Usage: "Dollars AND Cents" is correct.
+                output.push(mkWord('and', 'type-separator'));
+                
+                let centsStr = decPart.substring(0, 2);
+                if (centsStr.length === 1) centsStr += '0'; 
+                
+                let centsVal = parseInt(centsStr, 10);
+                if (centsVal > 0) {
+                    output = output.concat(convertInteger(centsStr));
+                    output.push(mkWord(centsVal === 1 ? 'cent' : 'cents', 'type-currency'));
+                } else {
+                     output.push(mkWord('zero', 'type-one'));
+                     output.push(mkWord('cents', 'type-currency'));
+                }
+            }
+            return output;
+        }
+
+        function convertSpellMode(rawInput) {
+            let words = [];
+            for (let char of rawInput) {
+                if (char === ' ') continue; 
+                if (char === '-') words.push(mkWord('minus', 'type-negative'));
+                else if (char === '.') words.push(mkWord('point', 'type-separator'));
+                else if (char >= '0' && char <= '9') {
+                    let d = parseInt(char);
+                    words.push(mkWord(d === 0 ? 'zero' : ONES[d], 'type-one'));
+                } else {
+                    words.push(mkWord(char, 'type-letter'));
+                }
+            }
+            return words;
+        }
+
+        function updateDisplay() {
+            const currentMode = document.querySelector('input[name="mode"]:checked').value;
+            let val = input.value;
+
+            // Toggle Clear Button
+            if (val.length > 0) {
+                clearBtn.classList.add('visible');
+            } else {
+                clearBtn.classList.remove('visible');
+            }
+
+            if (currentMode !== 'spell') {
+                val = val.replace(/[^0-9.-]/g, '');
+            } 
+            
+            if ((val.match(/\./g) || []).length > 1) {
+                val = val.substring(0, val.lastIndexOf('.'));
+            }
+
+            result.innerHTML = '';
+            if (!val || val === '-') return;
+
+            let finalOutput = [];
+
+            if (currentMode === 'spell') {
+                finalOutput = convertSpellMode(val);
+            } 
+            else {
+                let isNegative = false;
+                if (val.startsWith('-')) {
+                    isNegative = true;
+                    val = val.substring(1);
+                }
+
+                let parts = val.split('.');
+                let intPart = parts[0] || '0';
+                let decPart = parts[1] || '';
+
+                if (isNegative) finalOutput.push(mkWord('minus', 'type-negative'));
+
+                if (currentMode === 'money') {
+                    finalOutput = finalOutput.concat(convertMoney(intPart, decPart));
+                } else {
+                    // STANDARD MODE
+                    if (/\d/.test(intPart)) finalOutput = finalOutput.concat(convertInteger(intPart));
+                    
+                    if (parts.length > 1 && decPart.length > 0) {
+                        finalOutput.push(mkWord('point', 'type-separator'));
+                        
+                        let leadingZeros = 0;
+                        while(leadingZeros < decPart.length && decPart[leadingZeros] === '0') {
+                            leadingZeros++;
+                        }
+                        
+                        if (leadingZeros > 0) {
+                            for(let i=0; i<leadingZeros; i++) {
+                                finalOutput.push(mkWord('zero', 'type-one'));
+                            }
+                        }
+
+                        let restDec = decPart.substring(leadingZeros);
+                        if (restDec.length > 0) {
+                            finalOutput = finalOutput.concat(convertInteger(restDec));
+                        }
+                    }
+                }
+            }
+
+            finalOutput.forEach((item) => {
+                const span = document.createElement('span');
+                span.textContent = item.text;
+                span.className = `word ${item.type}`;
+                result.appendChild(span);
+            });
+        }
+
+        input.addEventListener('input', updateDisplay);
+    </script>
+</body>
+</html>
