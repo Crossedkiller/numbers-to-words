@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soft & Smart Number Converter v9 (US Standard)</title>
+    <title>Soft & Smart Number Converter v12 (DoB Natural Read)</title>
     <style>
         :root {
             --bg-color: #202124;
@@ -21,6 +21,11 @@
             
             --col-money: #86efac;   /* Green (Money) */
             --col-letter: #fcd34d;  /* Amber (Letters) */
+            
+            /* --- DoB Specific Colors --- */
+            --col-dob-1: #67e8f9;   /* Cyan (Day) */
+            --col-dob-2: #f0abfc;   /* Fuchsia (Month) */
+            --col-dob-3: #fde047;   /* Yellow (Year) */
             
             /* UI Colors */
             --col-active-purple: #8b5cf6;
@@ -54,7 +59,7 @@
         /* --- INPUT ZONE --- */
         .input-zone {
             width: 100%;
-            max-width: 500px;
+            max-width: 550px; 
             display: flex;
             flex-direction: column;
             margin-bottom: 60px;
@@ -175,6 +180,11 @@
         .type-negative { color: var(--col-neg); }
         .type-currency { color: var(--col-money); }
         .type-letter { color: var(--col-letter); text-transform: uppercase; }
+        
+        /* New DoB Classes */
+        .type-dob-1 { color: var(--col-dob-1); }
+        .type-dob-2 { color: var(--col-dob-2); }
+        .type-dob-3 { color: var(--col-dob-3); }
 
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -193,6 +203,9 @@
 
                     <input type="radio" name="mode" id="modeSpell" value="spell">
                     <label for="modeSpell">ABC</label>
+
+                    <input type="radio" name="mode" id="modeDob" value="dob">
+                    <label for="modeDob">DoB</label>
                 </div>
             </div>
             
@@ -233,22 +246,18 @@
             updateDisplay();
         });
 
-        // --- CORE LOGIC (US Standard: No 'and' in integers) ---
+        // --- CORE INTEGER LOGIC ---
         function processThreeDigits(numString) {
             let num = parseInt(numString, 10);
             if (num === 0) return [];
             let chunkWords = [];
             
-            // Hundreds
             if (num >= 100) {
                 chunkWords.push(mkWord(ONES[Math.floor(num / 100)], 'type-one'));
                 chunkWords.push(mkWord('hundred', 'type-unit'));
-                // US Fix: removed the "and" check here. 
-                // 345 becomes "three hundred forty-five".
                 num %= 100;
             }
             
-            // Tens & Ones
             if (num >= 20) {
                 let tenText = TENS[Math.floor(num / 10)];
                 let oneText = ONES[num % 10];
@@ -265,9 +274,9 @@
             return chunkWords;
         }
 
-        function convertInteger(intString) {
+        function convertInteger(intString, overrideType = null) {
             intString = intString.replace(/^0+/, '');
-            if (intString === '') return [mkWord('zero', 'type-one')];
+            if (intString === '') return [mkWord('zero', overrideType || 'type-one')];
 
             let words = [];
             let chunkCount = 0;
@@ -278,10 +287,15 @@
                 intString = intString.slice(0, -chunkLen);
 
                 let chunkResult = processThreeDigits(chunkStr);
+                
+                if (overrideType) {
+                    chunkResult = chunkResult.map(w => ({ ...w, type: overrideType }));
+                }
+
                 if (chunkResult.length > 0) {
                     if (chunkCount > 0) {
                         let unitName = THOUSANDS[chunkCount] || 'lots'; 
-                        chunkResult.push(mkWord(unitName, 'type-unit'));
+                        chunkResult.push(mkWord(unitName, overrideType || 'type-unit'));
                     }
                     words = chunkResult.concat(words);
                 }
@@ -298,9 +312,7 @@
             output.push(mkWord((intPart === '1' && !decPart) ? 'dollar' : 'dollars', 'type-currency'));
 
             if (decPart && decPart.length > 0) {
-                // US Usage: "Dollars AND Cents" is correct.
                 output.push(mkWord('and', 'type-separator'));
-                
                 let centsStr = decPart.substring(0, 2);
                 if (centsStr.length === 1) centsStr += '0'; 
                 
@@ -332,11 +344,70 @@
             return words;
         }
 
+        // --- DOB LOGIC (Updated to read chunks naturally) ---
+        function convertDob(rawInput) {
+            let words = [];
+            let clean = rawInput.replace(/[^0-9]/g, '').substring(0, 8);
+            
+            // 1. Day (First 2 chars)
+            if (clean.length >= 1) {
+                let dayStr = clean.substring(0, 2);
+                words = words.concat(convertInteger(dayStr, 'type-dob-1'));
+            }
+
+            // 2. Month (Next 2 chars)
+            if (clean.length >= 3) {
+                let monthStr = clean.substring(2, 4);
+                // Just use standard integer conversion (11 -> eleven)
+                words = words.concat(convertInteger(monthStr, 'type-dob-2'));
+            }
+
+            // 3. Year (Last 4 chars)
+            if (clean.length > 4) {
+                let yearPart = clean.substring(4);
+                
+                // EDGE CASE FIX: Years 2000-2009 read as "Two thousand [x]"
+                let yearVal = parseInt(yearPart, 10);
+                if (yearPart.length === 4 && yearVal >= 2000 && yearVal <= 2009) {
+                    words = words.concat(convertInteger(yearPart, 'type-dob-3'));
+                } 
+                // STANDARD LOGIC: Split century (19) and year (98)
+                else {
+                    // Chunk 1 (Century)
+                    if (yearPart.length >= 2) {
+                        let century = yearPart.substring(0, 2);
+                        words = words.concat(convertInteger(century, 'type-dob-3'));
+                    } else if (yearPart.length > 0) {
+                        words = words.concat(convertInteger(yearPart, 'type-dob-3'));
+                    }
+
+                    // Chunk 2 (Year/Decade)
+                    if (yearPart.length >= 4) {
+                        let decade = yearPart.substring(2, 4);
+                        if (decade === '00') {
+                            words.push(mkWord('hundred', 'type-dob-3'));
+                        } else {
+                            if (decade.startsWith('0')) {
+                                words.push(mkWord('oh', 'type-dob-3'));
+                                let d = parseInt(decade[1]);
+                                words.push(mkWord(ONES[d], 'type-dob-3'));
+                            } else {
+                                words = words.concat(convertInteger(decade, 'type-dob-3'));
+                            }
+                        }
+                    } else if (yearPart.length === 3) {
+                         let digit3 = yearPart.substring(2, 3);
+                         words.push(mkWord(digit3 === '0' ? 'zero' : ONES[parseInt(digit3)], 'type-dob-3'));
+                    }
+                }
+            }
+            return words;
+        }
+
         function updateDisplay() {
             const currentMode = document.querySelector('input[name="mode"]:checked').value;
             let val = input.value;
 
-            // Toggle Clear Button
             if (val.length > 0) {
                 clearBtn.classList.add('visible');
             } else {
@@ -358,6 +429,9 @@
 
             if (currentMode === 'spell') {
                 finalOutput = convertSpellMode(val);
+            }
+            else if (currentMode === 'dob') {
+                finalOutput = convertDob(val);
             } 
             else {
                 let isNegative = false;
@@ -375,7 +449,6 @@
                 if (currentMode === 'money') {
                     finalOutput = finalOutput.concat(convertMoney(intPart, decPart));
                 } else {
-                    // STANDARD MODE
                     if (/\d/.test(intPart)) finalOutput = finalOutput.concat(convertInteger(intPart));
                     
                     if (parts.length > 1 && decPart.length > 0) {
@@ -411,5 +484,4 @@
         input.addEventListener('input', updateDisplay);
     </script>
 </body>
-
 </html>
